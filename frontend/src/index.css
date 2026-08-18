@@ -1,0 +1,421 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400;1,700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Cinzel:wght@600;700;800;900&family=Cormorant+Garamond:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'Azonix';
+  src: url('/fonts/Azonix.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body, p, span, div, li, ul, ol, input, textarea, select, button, a, table, td, th {
+    font-family: "Lato", "Plus Jakarta Sans", Inter, system-ui, -apple-system, sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: 0.005em;
+  }
+
+  body {
+    @apply antialiased min-h-screen selection:bg-brand-500 selection:text-white transition-colors duration-300;
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  .brand-title, .page-title, .section-title, .card-title, .heading-serif, .heading-serif * {
+    font-family: "Adorn Serif", "Playfair Display", "Cinzel", "Cormorant Garamond", Georgia, serif !important;
+    text-transform: none !important;
+    letter-spacing: -0.012em;
+    line-height: 1.25;
+  }
+
+  .font-azonix, .btn-azonix {
+    font-family: 'Azonix', 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    letter-spacing: 0.04em;
+  }
+}
+
+/* =========================================================================
+   ✨ INNOVATIVE AMBIENT MESH & DYNAMIC GRID BACKGROUND (LIGHT & DARK)
+   ========================================================================= */
+
+.app-background {
+  min-height: 100vh;
+  position: relative;
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(99, 102, 241, 0.12) 0px, transparent 55%),
+    radial-gradient(at 85% 20%, rgba(168, 85, 247, 0.10) 0px, transparent 50%),
+    radial-gradient(at 50% 85%, rgba(59, 130, 246, 0.08) 0px, transparent 60%),
+    radial-gradient(at 80% 80%, rgba(236, 72, 153, 0.06) 0px, transparent 50%),
+    radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 28px 28px;
+  background-attachment: fixed;
+}
+
+.dark .app-background {
+  background-color: #030712 !important;
+  background-image: 
+    radial-gradient(at 10% 15%, rgba(99, 102, 241, 0.25) 0px, transparent 55%),
+    radial-gradient(at 90% 15%, rgba(139, 92, 246, 0.22) 0px, transparent 50%),
+    radial-gradient(at 50% 90%, rgba(59, 130, 246, 0.18) 0px, transparent 60%),
+    radial-gradient(at 80% 80%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
+    radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 32px 32px !important;
+}
+
+/* Glass Card Defaults */
+.glass-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+}
+
+.glass-card-dark {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* =========================================================================
+   🌙 HIGH-CONTRAST, CLEAN & VIBRANT DARK MODE STYLES
+   ========================================================================= */
+
+.dark .glass-card {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Base surface overrides */
+.dark .bg-white,
+.dark .bg-gradient-to-b.from-white {
+  background-color: #0f172a !important;
+  background-image: none !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/80 {
+  background-color: #0b1120 !important;
+}
+
+.dark .bg-slate-100,
+.dark .bg-slate-100\/80,
+.dark .bg-slate-100\/90 {
+  background-color: #1e293b !important;
+}
+
+/* Border overrides */
+.dark .border-slate-200,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/60,
+.dark .border-slate-100 {
+  border-color: #1e293b !important;
+}
+
+/* Table Dark Mode Overrides */
+.dark table thead {
+  background-color: #0b1120 !important;
+  border-color: #1e293b !important;
+}
+
+.dark table thead th {
+  color: #94a3b8 !important;
+  border-color: #1e293b !important;
+}
+
+.dark table tbody tr {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+.dark table tbody tr:hover,
+.dark table tbody tr.hover\:bg-slate-50\/80:hover {
+  background-color: #1e293b !important;
+}
+
+.dark table tbody td {
+  border-color: #1e293b !important;
+}
+
+/* User Selection Highlighting in Dark Mode */
+.dark tr.selected,
+.dark tr[aria-selected="true"],
+.dark .selected-row {
+  background-color: rgba(49, 46, 129, 0.4) !important;
+}
+
+/* Typography Legibility in Dark Mode */
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Form inputs & textareas */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="tel"],
+.dark input[type="number"],
+.dark textarea,
+.dark select {
+  background-color: #0b1120 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #475569 !important;
+}
+
+/* Upload dashed box */
+.dark .border-dashed {
+  border-color: #334155 !important;
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+
+/* =========================================================================
+   🏆 SWOT QUADRANTS IN DARK MODE (HIGH CONTRAST & PURE READABILITY)
+   ========================================================================= */
+
+/* 1. Strengths (Green) */
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/60,
+.dark .bg-emerald-50\/70,
+.dark .bg-emerald-50\/80 {
+  background-color: #062319 !important;
+  border-color: #047857 !important;
+}
+
+.dark .text-emerald-950,
+.dark .text-emerald-900,
+.dark .text-emerald-800,
+.dark .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+.dark .bg-emerald-200\/80,
+.dark .bg-emerald-200,
+.dark .bg-emerald-100 {
+  background-color: rgba(5, 150, 105, 0.3) !important;
+  color: #6ee7b7 !important;
+}
+
+/* Strengths Badges / Skill Pills */
+.dark .bg-emerald-50 .bg-white,
+.dark .bg-emerald-50\/60 .bg-white,
+.dark .bg-emerald-50\/80 .bg-white {
+  background-color: #0f172a !important;
+  border-color: #059669 !important;
+  color: #6ee7b7 !important;
+}
+
+/* 2. Weaknesses (Red/Rose) */
+.dark .bg-rose-50,
+.dark .bg-rose-50\/60,
+.dark .bg-rose-50\/70,
+.dark .bg-rose-50\/80 {
+  background-color: #2b0b14 !important;
+  border-color: #be123c !important;
+}
+
+.dark .text-rose-950,
+.dark .text-rose-900,
+.dark .text-rose-800,
+.dark .text-rose-700 {
+  color: #fda4af !important;
+}
+
+.dark .bg-rose-200\/80,
+.dark .bg-rose-200,
+.dark .bg-rose-100 {
+  background-color: rgba(225, 29, 72, 0.3) !important;
+  color: #fda4af !important;
+}
+
+.dark .bg-rose-50 .bg-white,
+.dark .bg-rose-50\/60 .bg-white {
+  background-color: #0f172a !important;
+  border-color: #e11d48 !important;
+  color: #fda4af !important;
+}
+
+/* 3. Opportunities (Sky Blue / Indigo) */
+.dark .bg-sky-50,
+.dark .bg-sky-50\/60,
+.dark .bg-sky-50\/70,
+.dark .bg-sky-50\/80,
+.dark .bg-brand-50,
+.dark .bg-brand-50\/60,
+.dark .bg-brand-50\/70,
+.dark .bg-brand-50\/80 {
+  background-color: #0c1a30 !important;
+  border-color: #1d4ed8 !important;
+}
+
+.dark .text-sky-950,
+.dark .text-sky-900,
+.dark .text-sky-800,
+.dark .text-sky-700,
+.dark .text-brand-950,
+.dark .text-brand-900,
+.dark .text-brand-800,
+.dark .text-brand-700 {
+  color: #93c5fd !important;
+}
+
+.dark .bg-sky-200\/80,
+.dark .bg-sky-100,
+.dark .bg-brand-200\/80,
+.dark .bg-brand-100 {
+  background-color: rgba(37, 99, 235, 0.3) !important;
+  color: #93c5fd !important;
+}
+
+.dark .bg-sky-50 .bg-white,
+.dark .bg-sky-50\/60 .bg-white,
+.dark .bg-brand-50 .bg-white {
+  background-color: #0f172a !important;
+  border-color: #2563eb !important;
+  color: #93c5fd !important;
+}
+
+/* 4. Threats (Amber/Yellow) */
+.dark .bg-amber-50,
+.dark .bg-amber-50\/60,
+.dark .bg-amber-50\/70,
+.dark .bg-amber-50\/80 {
+  background-color: #261604 !important;
+  border-color: #b45309 !important;
+}
+
+.dark .text-amber-950,
+.dark .text-amber-900,
+.dark .text-amber-800,
+.dark .text-amber-700 {
+  color: #fde047 !important;
+}
+
+.dark .bg-amber-200\/80,
+.dark .bg-amber-200,
+.dark .bg-amber-100 {
+  background-color: rgba(217, 119, 6, 0.3) !important;
+  color: #fde047 !important;
+}
+
+.dark .bg-amber-50 .bg-white,
+.dark .bg-amber-50\/60 .bg-white {
+  background-color: #0f172a !important;
+  border-color: #d97706 !important;
+  color: #fde047 !important;
+}
+
+/* =========================================================================
+   📚 LEARNING PORTAL & CURRICULUM CARDS IN DARK MODE
+   ========================================================================= */
+
+.dark #official-curriculum .bg-white {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+.dark #official-curriculum .bg-white:hover {
+  border-color: #6366f1 !important;
+  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.15) !important;
+}
+
+.dark #official-curriculum .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.dark #official-curriculum .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+/* Brand & accent tint backgrounds */
+.dark .bg-brand-50,
+.dark .bg-brand-50\/60,
+.dark .bg-brand-50\/80 {
+  background-color: rgba(49, 46, 129, 0.4) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  color: #c7d2fe !important;
+}
+
+.dark .text-brand-700,
+.dark .text-brand-800,
+.dark .text-brand-900 {
+  color: #a5b4fc !important;
+}
+
+.dark .text-brand-600 {
+  color: #818cf8 !important;
+}
+
+.dark .bg-brand-100 {
+  background-color: rgba(79, 70, 229, 0.25) !important;
+  color: #a5b4fc !important;
+}
+
+/* Missing Keywords Box in Dark Mode */
+.dark .border-rose-200,
+.dark .border-rose-200\/90 {
+  border-color: rgba(244, 63, 94, 0.35) !important;
+  background-color: #0f172a !important;
+}
+
+.dark .border-rose-200 .text-rose-900,
+.dark .border-rose-200\/90 .text-rose-900 {
+  color: #fb7185 !important;
+}
+
+.dark .bg-rose-100 {
+  background-color: rgba(225, 29, 72, 0.25) !important;
+  color: #fca5a5 !important;
+}
+
+/* ATS Summary Banner in Dark Mode */
+.dark .bg-white\/80 {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Custom modern scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
