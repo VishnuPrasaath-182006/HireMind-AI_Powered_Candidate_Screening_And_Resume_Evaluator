@@ -74,12 +74,17 @@ app = FastAPI(
     openapi_tags=tags_metadata
 )
 
-# Configure CORS
+# Configure CORS - Allows all frontend clients and Vercel domains seamlessly
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=[
+        "https://hiremind-phi.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "*"
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -230,7 +235,7 @@ def logout(current_user: Users = Depends(get_current_user)):
 
 
 # ============================================================================
-# ?? STEP 2: USER PROFILE & DIRECTORY (AUTHENTICATED)
+# STEP 2: USER PROFILE & DIRECTORY (AUTHENTICATED)
 # ============================================================================
 
 @app.get("/me", response_model=UserResponse, tags=["2. User Profile & Directory"], summary="2.1 Get current logged-in user profile [Protected]")
@@ -365,7 +370,7 @@ def delete_my_account(
 
 
 # ============================================================================
-# ?? STEP 3 TO 7: CORE BACKEND & PLOTLY VISUALIZATIONS (MOUNTED IN ORDER)
+# STEP 3 TO 7: CORE BACKEND & PLOTLY VISUALIZATIONS (MOUNTED IN ORDER)
 # ============================================================================
 
 # Step 1: Authentication & Security
@@ -385,4 +390,3 @@ app.include_router(metrics_router)
 
 # Step 7: Plotly Data Visualizations & Statistics
 app.include_router(analytics_router)
-
