@@ -2,6 +2,7 @@ import numpy as np
 from typing import List, Union
 
 try:
+    # pyrefly: ignore [missing-import]
     from sentence_transformers import SentenceTransformer
 except ImportError:
     SentenceTransformer = None
@@ -18,20 +19,26 @@ class EmbeddingService:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
         self.model = None
-        self._load_model()
+        self._model_attempted = False  # Lazy load flag
 
-    def _load_model(self):
-        if SentenceTransformer is not None:
-            try:
-                # Load lightweight 384-dim sentence transformer
-                self.model = SentenceTransformer(self.model_name)
-            except Exception as e:
-                print(f"Could not load SentenceTransformer '{self.model_name}', using fallback: {e}")
-                self.model = None
+    def _ensure_model_loaded(self):
+        """Lazy load model on first demand to prevent Render Out of Memory on startup."""
+        if not self._model_attempted:
+            self._model_attempted = True
+            if SentenceTransformer is not None:
+                try:
+                    print(f"Lazy loading SentenceTransformer '{self.model_name}' on first request...")
+                    self.model = SentenceTransformer(self.model_name)
+                    print("SentenceTransformer loaded successfully!")
+                except Exception as e:
+                    print(f"Could not load SentenceTransformer '{self.model_name}', using fallback: {e}")
+                    self.model = None
 
     def get_embedding(self, text: str) -> List[float]:
         if not text or not text.strip():
             return [0.0] * 384
+
+        self._ensure_model_loaded()
 
         if self.model is not None:
             try:
@@ -56,6 +63,8 @@ class EmbeddingService:
             return np.zeros((0, 384), dtype=np.float32)
         
         cleaned_texts = [t[:4000] if t else "" for t in texts]
+
+        self._ensure_model_loaded()
 
         if self.model is not None:
             try:
@@ -89,6 +98,8 @@ class EmbeddingService:
     def compute_text_similarity(self, text1: str, text2: str) -> float:
         if not text1 or not text2:
             return 0.0
+
+        self._ensure_model_loaded()
 
         if self.model is not None:
             try:
