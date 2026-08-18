@@ -382,6 +382,7 @@ class MatchEvaluateResponse(BaseModel):
     swot: Optional[Dict[str, Any]] = None
     comparison: Optional[Dict[str, Any]] = None
     ats_evaluation: Optional[Dict[str, Any]] = None
+    recommended_roles: Optional[List[Dict[str, Any]]] = None
 
 
 

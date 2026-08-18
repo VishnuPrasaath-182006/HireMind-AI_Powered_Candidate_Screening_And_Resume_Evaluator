@@ -246,6 +246,7 @@ def evaluate_match(
     )
 
     learning_path_data = learning_engine.generate_learning_path(match_result["missing_skills"])
+    recommended_roles_data = learning_engine.recommend_career_roles(candidate_skills, resume_text)
 
     # 5. Save to Database History with ATS data
     eval_record = MatchEvaluationRecord(
@@ -294,6 +295,7 @@ def evaluate_match(
         "swot": swot_data,
         "comparison": comparison_data,
         "ats_evaluation": ats_result,
+        "recommended_roles": recommended_roles_data,
     }
 
 
@@ -397,6 +399,7 @@ def get_history_detail(
         "swot": swot_data,
         "comparison": comparison_data,
         "ats_evaluation": rec.ats_evaluation or None,
+        "recommended_roles": learning_engine.recommend_career_roles(rec.matched_skills or [], rec.job_description or "")
     }
 
 

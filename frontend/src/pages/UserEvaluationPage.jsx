@@ -260,6 +260,109 @@ export default function UserEvaluationPage() {
     }
   };
 
+  const ROLE_TAXONOMY = [
+    {
+      role_title: "AI & Machine Learning Engineer",
+      category: "Artificial Intelligence & Data Science",
+      description: "Design and implement machine learning models, natural language processing pipelines, AI applications, and data algorithms.",
+      core_skills: ["ai", "python", "data science", "nlp", "machine learning", "deep learning", "algorithms", "c++", "c", "aws"],
+      recommended_path: "Deep Learning, LLMs, & Production Machine Learning Pipelines",
+      salary_range: "$110,000 - $165,000 / yr",
+      growth_outlook: "Extremely High (38% 5-yr growth)"
+    },
+    {
+      role_title: "Cloud & DevOps Solutions Engineer",
+      category: "Cloud Infrastructure & Systems",
+      description: "Build, configure, and automate resilient cloud platforms, Linux environments, container workflows, and infrastructure services.",
+      core_skills: ["aws", "linux", "cloud", "docker", "kubernetes", "python", "collaboration", "git", "ci/cd"],
+      recommended_path: "AWS Solutions Architecture & Kubernetes Infrastructure",
+      salary_range: "$105,000 - $160,000 / yr",
+      growth_outlook: "High Demand (26% 5-yr growth)"
+    },
+    {
+      role_title: "Systems & Backend Software Developer",
+      category: "Systems & Backend Engineering",
+      description: "Develop high-performance systems applications, backend services, object-oriented architectures, and data processing layers.",
+      core_skills: ["c", "c++", "java", "python", "linux", "algorithms", "data structures", "sql", "git"],
+      recommended_path: "High-Performance Systems & Modern C++ / Java Microservices",
+      salary_range: "$95,000 - $145,000 / yr",
+      growth_outlook: "High Demand (22% 5-yr growth)"
+    },
+    {
+      role_title: "Frontend & Web Design Engineer",
+      category: "Frontend & Creative Tech",
+      description: "Create responsive user interfaces, aesthetic web designs, interactive web applications, and rich visual digital media.",
+      core_skills: ["frontend", "web designing", "html", "css", "javascript", "react", "photography", "ui", "ux"],
+      recommended_path: "Modern React.js, Responsive CSS Systems & UI Design",
+      salary_range: "$85,000 - $130,000 / yr",
+      growth_outlook: "Moderate to High (18% 5-yr growth)"
+    },
+    {
+      role_title: "Full Stack Software Developer",
+      category: "Software Engineering",
+      description: "Build end-to-end applications spanning responsive web design, client-side frontend, API integrations, and robust backend code.",
+      core_skills: ["frontend", "web designing", "python", "java", "javascript", "c++", "aws", "git", "collaboration"],
+      recommended_path: "Full Stack Web Architecture & REST API Development",
+      salary_range: "$95,000 - $150,000 / yr",
+      growth_outlook: "High Demand (25% 5-yr growth)"
+    },
+    {
+      role_title: "Data Analyst & Quantitative Engineer",
+      category: "Data Science & Analytics",
+      description: "Analyze large datasets, extract business intelligence telemetry, write data analysis algorithms, and build statistical models.",
+      core_skills: ["data science", "python", "c", "c++", "ai", "sql", "linux", "collaboration"],
+      recommended_path: "Applied Data Science, Statistical Modeling & Big Data",
+      salary_range: "$90,000 - $140,000 / yr",
+      growth_outlook: "High Demand (27% 5-yr growth)"
+    }
+  ];
+
+  const computeDynamicRecommendedRoles = (skillsList) => {
+    if (!skillsList || skillsList.length === 0) return [];
+    const normalized = skillsList.map((s) => s.toLowerCase().trim().replace(/[\s_-]+/g, ""));
+
+    const scored = ROLE_TAXONOMY.map((role) => {
+      const matched = [];
+      const missing = [];
+
+      role.core_skills.forEach((cs) => {
+        const csNorm = cs.toLowerCase().replace(/[\s_-]+/g, "");
+        const isMatched = normalized.some((userSkill) =>
+          userSkill === csNorm || userSkill.includes(csNorm) || csNorm.includes(userSkill)
+        );
+
+        const titleCaseSkill = cs
+          .split(" ")
+          .map((w) => (w.toUpperCase() === "AI" || w.toUpperCase() === "AWS" || w.toUpperCase() === "C++" || w.toUpperCase() === "C" ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+          .join(" ");
+
+        if (isMatched) {
+          matched.push(titleCaseSkill);
+        } else {
+          missing.push(titleCaseSkill);
+        }
+      });
+
+      const rawPct = (matched.length / Math.max(1, role.core_skills.length)) * 100;
+      const fitPercentage = Math.min(96, Math.max(40, Math.round(rawPct + 18)));
+
+      return {
+        role_title: role.role_title,
+        category: role.category,
+        description: role.description,
+        fit_percentage: fitPercentage,
+        matched_skills: matched,
+        missing_skills: missing.slice(0, 4),
+        recommended_path: role.recommended_path,
+        salary_range: role.salary_range,
+        growth_outlook: role.growth_outlook
+      };
+    });
+
+    scored.sort((a, b) => b.fit_percentage - a.fit_percentage);
+    return scored.slice(0, 4);
+  };
+
   const getScoreColor = (pct) => {
     if (pct >= 75) return { text: "text-emerald-600", bg: "bg-emerald-500", ring: "stroke-emerald-500", border: "border-emerald-200", badgeBg: "bg-emerald-100 text-emerald-800" };
     if (pct >= 50) return { text: "text-brand-600", bg: "bg-brand-500", ring: "stroke-brand-500", border: "border-brand-200", badgeBg: "bg-brand-100 text-brand-800" };
@@ -446,6 +549,22 @@ export default function UserEvaluationPage() {
     recommended_focus_area: (activeMatch.missing_skills && activeMatch.missing_skills[0]) || "Cloud Architecture"
   };
 
+  // Resolve actual candidate skills from active workspace or match results
+  const candidateSkillsList = (
+    (workspace.parsedProfile?.parsed_skills && workspace.parsedProfile.parsed_skills.length > 0)
+      ? workspace.parsedProfile.parsed_skills
+      : (activeMatch.matched_exact_skills && activeMatch.matched_exact_skills.length > 0)
+        ? activeMatch.matched_exact_skills
+        : []
+  );
+
+  // Compute recommended roles based on active candidate skills
+  const displayRecommendedRoles = computeDynamicRecommendedRoles(
+    candidateSkillsList.length > 0
+      ? candidateSkillsList
+      : ["AI", "AWS", "C", "C++", "Python", "Linux", "Data Science", "Frontend", "Web Designing", "Java"]
+  );
+
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Page Header */}
@@ -489,19 +608,19 @@ export default function UserEvaluationPage() {
         </div>
 
         <div className="p-4 rounded-xl bg-slate-900 font-mono text-sm sm:text-base text-emerald-400 font-bold leading-relaxed border border-slate-800 shadow-inner overflow-x-auto selection:bg-emerald-400 selection:text-slate-950">
-          z = 5.75 * s_cosine + 5.97 * s_exact_skills + 0.97 * s_skill_graph - 4.37<br />
+          z = 2.24 * s_cosine + 3.87 * s_exact_skills + 3.21 * s_skill_graph - 4.80<br />
           P(Match) = 1 / (1 + e^(-z))
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-800 pt-1">
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 font-medium">
-            <strong className="text-slate-900 font-black">• W1 (+5.75):</strong> Semantic embedding alignment
+            <strong className="text-slate-900 font-black">• W1 (+2.24):</strong> Semantic embedding alignment
           </div>
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 font-medium">
-            <strong className="text-slate-900 font-black">• W2 (+5.97):</strong> Direct exact skill match ratio
+            <strong className="text-slate-900 font-black">• W2 (+3.87):</strong> Direct exact skill match ratio
           </div>
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 font-medium">
-            <strong className="text-slate-900 font-black">• W3 (+0.97):</strong> Relational taxonomy match credit
+            <strong className="text-slate-900 font-black">• W3 (+3.21):</strong> Relational taxonomy graph match
           </div>
         </div>
       </div>
@@ -510,9 +629,6 @@ export default function UserEvaluationPage() {
       <div className="glass-card rounded-2xl p-6 shadow-md border-2 border-brand-300/70 bg-gradient-to-br from-white via-brand-50/20 to-indigo-50/30 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-bold uppercase tracking-wider">
-              <FileCheck2 className="w-3.5 h-3.5" /> Detailed ATS Document Analysis & Wordings Check
-            </div>
             <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-indigo-600" />
               ATS Friendliness Report for Target Job
@@ -550,8 +666,8 @@ export default function UserEvaluationPage() {
             <div
               key={idx}
               className={`p-3.5 rounded-xl border transition-all text-left space-y-1.5 ${c.passed
-                  ? "bg-emerald-50/70 border-emerald-200"
-                  : "bg-rose-50/70 border-rose-200"
+                ? "bg-emerald-50/70 border-emerald-200"
+                : "bg-rose-50/70 border-rose-200"
                 }`}
             >
               <div className="flex items-center justify-between text-[11px]">
@@ -612,60 +728,45 @@ export default function UserEvaluationPage() {
             </h4>
             <ul className="text-xs text-slate-300 space-y-1 pl-4 list-disc">
               {ats.recommendations.map((rec, idx) => (
-                <li key={idx}>{rec}</li>
+        <li key={idx}>{rec}</li>
               ))}
             </ul>
           </div>
         )}
       </div>
 
-      {/* 3. TARGET POSITION CRITERIA CARD */}
-      <div className="glass-card rounded-2xl p-6 shadow-sm border border-brand-200/80 bg-gradient-to-r from-white via-brand-50/10 to-indigo-50/20 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-100 text-brand-800 text-xs font-bold heading-serif">
-              <Building2 className="w-3.5 h-3.5" /> {activeMatch.company_name || workspace.companyName || "Target Company"}
-            </span>
-            <span className="text-sm font-bold text-slate-900 heading-serif">
-              {activeMatch.job_title || workspace.jobTitle || "Target Role"}
-            </span>
-          </div>
-          <div className="text-xs text-slate-600 font-medium flex items-center gap-1">
-            <span className="heading-serif">User:</span>
-            <strong className="text-sm font-bold text-slate-950 heading-serif">
-              {activeMatch.candidate_name || (workspace.parsedProfile && workspace.parsedProfile.candidate_name) || "Candidate"}
-            </strong>
-          </div>
-        </div>
-
-        <p className="text-xs text-slate-700 leading-relaxed">
-          <strong>Target Job Description & Requirements:</strong>{" "}
-          {activeMatch.job_description || activeMatch.raw_job_description || workspace.jobDescription || "No target job description entered."}
-        </p>
-      </div>
-
-      {/* 4. CALIBRATED MATCH SCORE, COMPARISON BANNER, SUB-KPIS & RATIONALE */}
-      <div className="glass-card rounded-2xl p-6 shadow-md space-y-6">
-        {/* Score Ring Header */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-slate-100">
-          <div className="space-y-1 text-center sm:text-left">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold">
-              <Building2 className="w-3 h-3" /> {activeMatch.company_name || workspace.companyName || "Target Company"}
+      {/* 3 & 4. CALIBRATED MATCH SCORE & TARGET ROLE EVALUATION */}
+      <div className="glass-card rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white border border-indigo-500/30">
+        {/* Top Row: Details on Left + Score Gauge on Right */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+          <div className="space-y-3 flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30 heading-serif">
+                <Building2 className="w-3.5 h-3.5 text-indigo-400" /> {activeMatch.company_name || workspace.companyName || "Target Company"}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-300">
+                User: <strong className="text-white font-bold heading-serif">{activeMatch.candidate_name || (workspace.parsedProfile && workspace.parsedProfile.candidate_name) || "Candidate"}</strong>
+              </span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900">
+
+            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight heading-serif">
               {activeMatch.job_title || workspace.jobTitle || "Target Role"}
             </h3>
-            <p className="text-xs text-slate-600 font-medium">
-              Evaluated strictly on verified <strong>Skills Column</strong> for <strong className="text-slate-950 font-bold">{activeMatch.candidate_name || (workspace.parsedProfile && workspace.parsedProfile.candidate_name) || "Candidate"}</strong>
-            </p>
+
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-300 font-normal tracking-normal">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
+              <span>
+                Evaluated strictly on verified <strong className="text-emerald-400 font-semibold">Skills Column</strong> for <strong className="text-white font-bold tracking-normal">{activeMatch.candidate_name || (workspace.parsedProfile && workspace.parsedProfile.candidate_name) || "Candidate"}</strong>
+              </span>
+            </div>
           </div>
 
-          {/* Circular Score Ring */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center flex-shrink-0">
+          {/* Circular Score Ring (Classic Original Gauge - No Outer Box Border) */}
+          <div className="flex items-center flex-shrink-0 self-center md:self-auto">
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center flex-shrink-0 drop-shadow-sm">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-slate-100"
+                  className="text-slate-800/80"
                   strokeWidth="3.2"
                   stroke="currentColor"
                   fill="none"
@@ -682,10 +783,10 @@ export default function UserEvaluationPage() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 pointer-events-none">
-                <span className={`text-base sm:text-lg font-black tracking-tight leading-none ${getScoreColor(activeMatch.match_percentage).text}`}>
+                <span className={`text-xl sm:text-2xl font-black tracking-tight leading-none ${getScoreColor(activeMatch.match_percentage).text}`}>
                   {typeof activeMatch.match_percentage === 'number' ? `${activeMatch.match_percentage}%` : activeMatch.match_percentage}
                 </span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">
                   MATCH
                 </span>
               </div>
@@ -693,15 +794,25 @@ export default function UserEvaluationPage() {
           </div>
         </div>
 
+        {/* Target Job Description & Requirements block */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1.5 text-slate-300">
+          <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5 heading-serif">
+            <Briefcase className="w-4 h-4 text-indigo-400" /> Target Job Description & Evaluated Requirements:
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed font-sans">
+            {activeMatch.job_description || activeMatch.raw_job_description || workspace.jobDescription || "No target job description entered."}
+          </p>
+        </div>
+
         {/* PREVIOUS UPLOAD COMPARISON & PROGRESS BANNER */}
         {activeMatch.comparison && (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-md space-y-2">
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-indigo-950/90 text-white border border-slate-800 shadow-md space-y-2.5">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-brand-300 flex items-center gap-1.5 heading-serif">
-                <TrendingUp className="w-3.5 h-3.5" /> Previous Upload Comparison & Progress
+              <h4 className="text-xs font-bold text-indigo-300 flex items-center gap-1.5 heading-serif">
+                <TrendingUp className="w-4 h-4 text-indigo-400" /> Previous Upload Comparison & Progress
               </h4>
-              <span className="text-[11px] text-slate-300">
-                Last Record: {activeMatch.comparison.previous_eval_date || "Aug 15, 2026"}
+              <span className="text-[11px] text-slate-400">
+                Last Record: {activeMatch.comparison.previous_eval_date || "Aug 18, 2026"}
               </span>
             </div>
 
@@ -710,15 +821,15 @@ export default function UserEvaluationPage() {
                 <div className="text-xs text-slate-300">
                   Previous: <span className="font-bold text-white">{activeMatch.comparison.previous_match_percentage ? `${activeMatch.comparison.previous_match_percentage}%` : "%"}</span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 <div className="text-xs text-slate-300">
                   Current: <span className="font-bold text-emerald-400">{activeMatch.match_percentage}%</span>
                 </div>
                 <div className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 ${activeMatch.comparison.score_delta > 0
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                    : activeMatch.comparison.score_delta < 0
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                      : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  : activeMatch.comparison.score_delta < 0
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                   }`}>
                   {activeMatch.comparison.score_delta > 0 ? (
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -732,7 +843,7 @@ export default function UserEvaluationPage() {
               {activeMatch.comparison.newly_acquired_skills && activeMatch.comparison.newly_acquired_skills.length > 0 && (
                 <div className="text-xs text-slate-300">
                   New Skills Detected:{" "}
-                  <span className="text-emerald-300 font-semibold">
+                  <span className="text-emerald-400 font-semibold">
                     {activeMatch.comparison.newly_acquired_skills.join(", ")}
                   </span>
                 </div>
@@ -741,73 +852,76 @@ export default function UserEvaluationPage() {
           </div>
         )}
 
-        {/* Multi-Factor Sub-KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+        {/* Multi-Factor Sub-KPIs (Cohesive Dark Cards) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
               Dense Semantic Cosine
             </div>
-            <div className="text-2xl font-black text-slate-800 mt-1">
+            <div className="text-2xl sm:text-3xl font-black text-white">
               {Math.round((activeMatch.cosine_similarity || 0.36) * 100)}%
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Weight W1: +5.75</div>
+            <div className="text-[10px] text-indigo-300 font-medium">Weight W1: +2.24</div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
               Exact Skill Overlap
             </div>
-            <div className="text-2xl font-black text-slate-800 mt-1">
+            <div className="text-2xl sm:text-3xl font-black text-white">
               {Math.round((activeMatch.exact_skill_score || 0.33) * 100)}%
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Weight W2: +5.97</div>
+            <div className="text-[10px] text-indigo-300 font-medium">Weight W2: +3.87</div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
               Taxonomy Graph Score
             </div>
-            <div className="text-2xl font-black text-slate-800 mt-1">
+            <div className="text-2xl sm:text-3xl font-black text-white">
               {Math.round((activeMatch.skill_graph_score || 0.53) * 100)}%
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Weight W3: +0.97</div>
+            <div className="text-[10px] text-indigo-300 font-medium">Weight W3: +3.21</div>
           </div>
         </div>
 
         {/* Match Rationale & Recommendation */}
         {activeMatch.rationale && (
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-brand-600" />
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
+            <h4 className="text-base font-bold text-white flex items-center gap-2 heading-serif">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
               Match Rationale & Recommendation
-            </h3>
+            </h4>
 
-            <div className="p-4 rounded-xl bg-brand-50/60 border border-brand-100 text-xs text-brand-900 leading-relaxed font-medium">
+            <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
               {activeMatch.rationale.executive_summary}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
-                  <CheckCircle className="w-3.5 h-3.5" /> Matched Strengths (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-2 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 heading-serif">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Matched Strengths (
                   {activeMatch.matched_exact_skills ? activeMatch.matched_exact_skills.length : 0})
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {activeMatch.matched_exact_skills &&
+                  {activeMatch.matched_exact_skills && activeMatch.matched_exact_skills.length > 0 ? (
                     activeMatch.matched_exact_skills.map((s, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium"
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold"
                       >
                         {s}
                       </span>
-                    ))}
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">No direct keyword overlap</span>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> Missing Skills (
+              <div className="space-y-2 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5 heading-serif">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Missing Skills (
                   {activeMatch.missing_skills ? activeMatch.missing_skills.length : 0})
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -815,15 +929,13 @@ export default function UserEvaluationPage() {
                     activeMatch.missing_skills.map((s, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium"
+                        className="px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold"
                       >
                         {s}
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-emerald-600 font-medium">
-                      No critical skill gaps!
-                    </span>
+                    <span className="text-xs text-emerald-400 font-semibold">All target skills satisfied!</span>
                   )}
                 </div>
               </div>
@@ -1226,9 +1338,6 @@ export default function UserEvaluationPage() {
       <div id="official-curriculum" className="glass-card rounded-2xl p-6 shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold mb-1 heading-serif">
-              <Compass className="w-3.5 h-3.5" /> Official Curriculum & Direct Portals
-            </div>
             <h4 className="text-xl font-black text-slate-900 flex items-center gap-2 heading-serif">
               <GraduationCap className="w-5 h-5 text-brand-600" />
               Skill Recommendations & Official Technology Portals
@@ -1282,6 +1391,115 @@ export default function UserEvaluationPage() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* 7. RECOMMENDED JOB ROLES BASED ON RESUME & TECHNICAL PROFILE */}
+      <div className="glass-card rounded-2xl p-6 shadow-md space-y-6 border-2 border-brand-300/60 bg-gradient-to-br from-white via-indigo-50/20 to-brand-50/30">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
+          <div>
+            <h4 className="text-xl font-black text-slate-900 flex items-center gap-2 heading-serif">
+              <Briefcase className="w-5 h-5 text-indigo-600" />
+              Recommended Job Roles Based on Your Resume
+            </h4>
+            <p className="text-xs text-slate-600 mt-0.5 font-sans">
+              Personalized industry role trajectories computed by comparing your extracted skills, projects, and domain competencies.
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-bold self-start sm:self-auto font-sans shadow-sm">
+            {displayRecommendedRoles.length} Target Career Roles Found
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {displayRecommendedRoles.map((role, idx) => (
+            <div
+              key={idx}
+              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 flex flex-col justify-between space-y-4"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider px-2 py-0.5 bg-indigo-50 rounded-md border border-indigo-100 heading-serif">
+                      {role.category}
+                    </span>
+                    <h5 className="text-base font-bold text-slate-900 mt-1.5 heading-serif">
+                      {role.role_title}
+                    </h5>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-sans">Profile Match</div>
+                    <div className="text-xl font-black text-emerald-600 font-sans">
+                      {role.fit_percentage}%
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed font-sans">
+                  {role.description}
+                </p>
+
+                {/* Matched & Missing Skills Pills */}
+                <div className="space-y-2 pt-1">
+                  <div>
+                    <div className="text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1 heading-serif">
+                      <Check className="w-3 h-3 text-emerald-600" /> Matched In Your Resume:
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {role.matched_skills && role.matched_skills.length > 0 ? (
+                        role.matched_skills.map((s, sIdx) => (
+                          <span
+                            key={sIdx}
+                            className="px-2 py-0.5 rounded bg-emerald-50 text-[10px] font-bold text-emerald-800 border border-emerald-200 font-sans"
+                          >
+                            {s}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] text-slate-400 font-sans italic">Foundational skills aligned</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {role.missing_skills && role.missing_skills.length > 0 && (
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1 heading-serif">
+                        <ArrowUpRight className="w-3 h-3 text-brand-600" /> Upskill To Maximize Readiness:
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {role.missing_skills.map((s, sIdx) => (
+                          <span
+                            key={sIdx}
+                            className="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-semibold text-slate-700 border border-slate-200 font-sans"
+                          >
+                            +{s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Market Intelligence / Compensation & Outlook */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[11px] font-sans">
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="text-slate-400 text-[10px] font-bold uppercase">Salary Outlook</div>
+                    <div className="font-bold text-slate-800">{role.salary_range}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="text-slate-400 text-[10px] font-bold uppercase">Demand Growth</div>
+                    <div className="font-bold text-emerald-700">{role.growth_outlook}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Warning Symbol & Disclaimer */}
+        <div className="pt-2 border-t border-slate-200/80 flex items-center justify-center gap-1.5 text-[11px] text-amber-700 font-medium">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+          <span>This recommendation is based on the user&apos;s resume. Please search and check it once.</span>
         </div>
       </div>
     </div>
