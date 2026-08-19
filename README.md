@@ -223,12 +223,16 @@ sequenceDiagram
 
 #### Phase 3: Hybrid Scoring & Probabilistic Calibration
 1. **Feature Vector Assembly**: The system constructs a 3-element feature vector:
-   $$\mathbf{x} = [s_{\text{cosine}}, s_{\text{exact\_skill}}, s_{\text{skill\_graph}}]$$
+   $$\mathbf{x} = [s_{\text{cosine}}, s_{\text{exact}}, s_{\text{graph}}]$$
+   - $s_{\text{cosine}}$: Semantic embedding cosine similarity ($[0, 1]$)
+   - $s_{\text{exact}}$: Exact keyword match score ($[0, 1]$)
+   - $s_{\text{graph}}$: Relational taxonomy graph score ($[0, 1]$)
+
 2. **Logistic Regression Calibration**:
    - Instead of arbitrary heuristic weighting, the vector is passed through a calibrated Scikit-learn Logistic Regression model.
    - Pre-trained mathematical parameters:
      $$z = (+2.2368 \cdot s_{\text{cosine}}) + (+3.8712 \cdot s_{\text{exact}}) + (+3.2132 \cdot s_{\text{graph}}) - 4.8046$$
-     $$\text{Calibrated Score} = \frac{1}{1 + e^{-z}}$$
+     $$\text{Calibrated Score} = \sigma(z) = \frac{1}{1 + e^{-z}}$$
    - This produces an empirical probability representing true candidate job fit.
 
 #### Phase 4: ATS Diagnostics & Explainable AI (XAI)
@@ -247,8 +251,9 @@ sequenceDiagram
    - Pass 2: Redacts candidate name, email, phone number, gender-coded pronouns (`he`, `she`, `her`, `him`), and prestige educational institutions (e.g., Ivy League, IITs, Stanford, Oxford).
 2. **Fairness Delta Verification**:
    - Re-runs the hybrid scoring engine on the anonymized resume text.
-   - Computes the variance delta: $\Delta = |\text{Score}_{\text{original}} - \text{Score}_{\text{anonymized}}|$.
-   - Verifies fairness status ($\Delta \le 5.0\%$) to guarantee the candidate is evaluated strictly on merit.
+   - Computes the variance delta: 
+     $$\Delta = |\text{Score}_{\text{original}} - \text{Score}_{\text{anonymized}}|$$
+   - Verifies fairness status ($\Delta \le 0.05$ or $\le 5.0\%$) to guarantee the candidate is evaluated strictly on merit.
 
 #### Phase 6: Upskilling Engine & Interactive Visual Analytics
 1. **Targeted Learning Roadmap**:
