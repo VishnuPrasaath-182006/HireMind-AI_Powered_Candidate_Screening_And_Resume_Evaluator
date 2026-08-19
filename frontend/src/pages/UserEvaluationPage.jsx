@@ -736,7 +736,7 @@ export default function UserEvaluationPage() {
       </div>
 
       {/* 3 & 4. CALIBRATED MATCH SCORE & TARGET ROLE EVALUATION */}
-      <div className="glass-card rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white border border-indigo-500/30">
+      <div className="glass-card-dark rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 text-white border border-indigo-500/30">
         {/* Top Row: Details on Left + Score Gauge on Right */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
           <div className="space-y-3 flex-1 min-w-0">

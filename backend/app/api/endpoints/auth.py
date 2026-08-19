@@ -85,8 +85,11 @@ def send_otp_email_smtp(recipient_email: str, recipient_name: str, otp_code: str
             print(f"[HireMind OTP Email] Successfully dispatched live OTP to {recipient_email}")
             return True
         except Exception as e:
-            print(f"[HireMind OTP Email Note] SMTP sending skipped ({e}), fallback demo OTP active.")
-            return False
+            print(f"[HireMind OTP Email Error] Failed to send via SMTP to {recipient_email}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to deliver verification email to {recipient_email}. Please ensure the email address is valid."
+            )
     else:
         print(f"[HireMind OTP] (SMTP credentials not configured) Verification code for {recipient_email}: {otp_code}")
 
@@ -99,24 +102,22 @@ def send_otp_email_smtp(recipient_email: str, recipient_name: str, otp_code: str
 )
 def send_otp(request: SendOtpRequest):
     email = request.email.lower().strip()
-    # Use fixed 123456 fallback for seamless hackathon demo testing
-    otp_code = "123456" if not (settings.SMTP_USER and settings.SMTP_PASSWORD) else f"{random.randint(100000, 999999)}"
-    expires_at = datetime.utcnow() + timedelta(minutes=60)
+    otp_code = f"{random.randint(100000, 999999)}"
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
 
     OTP_STORAGE[email] = {
         "otp": otp_code,
         "expires_at": expires_at,
-        "verified": True
+        "verified": False
     }
 
-    # Dispatch email if SMTP configured
-    send_otp_email_smtp(email, request.name or "User", otp_code)
+    # Dispatch email
+    sent = send_otp_email_smtp(email, request.name or "User", otp_code)
 
     return {
         "status": "success",
-        "message": f"Verification code sent to {email}. Demo Code: {otp_code}",
-        "otp": otp_code,
-        "expires_in_minutes": 60
+        "message": f"Verification code sent to {email}",
+        "expires_in_minutes": 10
     }
 
 
@@ -172,26 +173,31 @@ def signup(user_in: SignUp, db: Session = Depends(get_db)):
 
     clean_email = user_in.email.lower().strip()
     
-    # OTP verification check (allows 123456 as universal demo OTP)
-    input_otp = user_in.otp.strip() if user_in.otp else ""
+    # Strictly require OTP verification before signup
+    if not user_in.otp or len(user_in.otp.strip()) != 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please click 'Send OTP' and enter the 6-digit verification code sent to your email."
+        )
+
     record = OTP_STORAGE.get(clean_email)
-    
-    if input_otp != "123456":
-        if not record:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Please click 'Send OTP' or enter the default demo code 123456."
-            )
-        if datetime.utcnow() > record["expires_at"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Verification code has expired. Please click 'Send OTP' to request a new code."
-            )
-        if record["otp"] != input_otp:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid verification code. Use demo code 123456 or click Send OTP."
-            )
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No verification code found for this email. Please click 'Send OTP' to receive your verification code."
+        )
+
+    if datetime.utcnow() > record["expires_at"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired. Please click 'Send OTP' to request a new code."
+        )
+
+    if record["otp"] != user_in.otp.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification code. Please check the code sent to your email."
+        )
 
     existing_user = db.query(Users).filter(Users.email == user_in.email).first()
     if existing_user:
