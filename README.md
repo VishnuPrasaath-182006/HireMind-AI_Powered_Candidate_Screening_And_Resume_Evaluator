@@ -122,7 +122,143 @@ ResumeBuilder/
 
 ---
 
-## 4. Core Features & Functional Modules
+## 4. System Architecture & End-to-End Workflow (How It Works)
+
+### 4.1 High-Level Multi-Tier Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client_Tier [Client Presentation Layer - React 19 + Vite]
+        UI_Cand[Candidate Portal<br/>- Resume Upload & Parsing<br/>- Match Diagnostics<br/>- Learning Roadmap]
+        UI_Rec[Recruiter Dashboard<br/>- Job Post Creation<br/>- Candidate Pool Overview<br/>- Batch Uploads]
+        UI_Rank[Leaderboard & Analytics<br/>- Score Ranking<br/>- Plotly Skill Radar<br/>- ATS & Bias Audits]
+    end
+
+    subgraph Security_Tier [API Gateway & Security Layer - FastAPI]
+        CORS[CORS Middleware]
+        AUTH[JWT Authentication & RBAC]
+        ROUTER[API Endpoint Routers<br/>/auth, /resumes, /jobs, /match, /metrics, /analytics]
+    end
+
+    subgraph Engine_Tier [Core AI/ML & Evaluation Processing Engine]
+        PARSER[Multi-Format Parser<br/>PyMuPDF / pdfplumber / docx]
+        NER[Skill NER Extractor<br/>SpaCy + Taxonomy Normalization]
+        EMB[Semantic Embedding Service<br/>all-MiniLM-L6-v2 / 384-dim Vectors]
+        GRAPH[Relational Skill Graph<br/>Exact & Sibling Tech Mapping]
+        CALIB[Logistic Calibration Engine<br/>W1=2.24, W2=3.87, W3=3.21, b=-4.80]
+        ATS[ATS Compatibility Checker<br/>Keyword Density, Section Audit, Internship Credit]
+        BIAS[Ethical Bias Audit Engine<br/>PII & Prestige Redaction / Delta Variance]
+        XAI[SWOT & Learning Path Generator<br/>Decision Rationale & Upskilling Modules]
+        PLOT[Plotly Visualization Engine<br/>Radar, Breakdown, Comparison HTML/JSON]
+    end
+
+    subgraph Persistence_Tier [Data Storage & Knowledge Base]
+        DB[(SQLAlchemy Relational Database<br/>PostgreSQL / SQLite)]
+        TAX_DATA[(skills_taxonomy.json<br/>3000+ Categorized Skills)]
+        CALIB_DATA[(calibration_model.pkl<br/>Pre-Trained Weights)]
+    end
+
+    Client_Tier -->|HTTPS / REST API + Bearer JWT| Security_Tier
+    Security_Tier -->|Authorized Requests| Engine_Tier
+    Engine_Tier -->|Read / Write Entities & Evaluations| DB
+    NER -->|Vocabulary Lookup| TAX_DATA
+    GRAPH -->|Relational Group Mapping| TAX_DATA
+    CALIB -->|Model Weights & Sigmoid Calibration| CALIB_DATA
+```
+
+---
+
+### 4.2 End-to-End Processing Data Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Candidate / Recruiter
+    participant Frontend as React Client (Vite)
+    participant API as FastAPI Backend
+    participant Parser as Parser & NER Engine
+    participant Embed as Dense Embedding Service
+    participant Graph as Relational Skill Graph
+    participant Calib as Calibration Engine
+    participant ATS as ATS & Bias Auditing
+    participant DB as Database (SQLAlchemy)
+
+    User->>Frontend: Upload Resume (PDF/DOCX) or Select Job
+    Frontend->>API: POST /api/resumes/upload or /api/match/evaluate
+    API->>Parser: Extract text, segment sections (Skills, Exp, Edu)
+    Parser->>Parser: Extract named skill entities using taxonomy & aliases
+    API->>Embed: Compute 384-dim dense semantic embeddings (Resume & JD)
+    Embed-->>API: Semantic Cosine Similarity (s1)
+    API->>Graph: Evaluate exact vs. relational taxonomy match
+    Graph-->>API: Exact Score (s2) & Skill Graph Score (s3)
+    API->>Calib: Calculate Calibrated Probability = Sigmoid(w*s + b)
+    Calib-->>API: Calibrated Match Score (%)
+    API->>ATS: Run ATS checks (word density, internship credit, missing keyword impact)
+    API->>ATS: Run Bias Audit (anonymize PII/demographics, compute score delta)
+    API->>DB: Persist evaluation record (MatchEvaluationRecord)
+    API-->>Frontend: Return comprehensive JSON (Scores, SWOT, Learning Path, Plotly Radar)
+    Frontend-->>User: Render Interactive Visual Dashboard & Actionable Insights
+```
+
+---
+
+### 4.3 Detailed Step-by-Step Execution Breakdown
+
+#### Phase 1: Ingestion & Structural Document Parsing
+1. **Multi-Format Extraction**: The resume file (`.pdf`, `.docx`, or `.txt`) is ingested as binary bytes. PyMuPDF (`fitz`) performs high-fidelity multi-column text layout analysis. If complex encoding is encountered, it seamlessly falls back to `pdfplumber` and `pypdf`. Microsoft Word documents are parsed via `python-docx`.
+2. **Structural Section Segmentation**: A regular expression boundary engine detects standard resume sections including *Skills & Competencies*, *Work Experience / Internships*, *Education & Academics*, *Projects & Portfolio*, and *Certifications*.
+3. **Contact & Metadata Extraction**: Phone numbers, email addresses, and candidate names are identified and extracted for profile indexing.
+
+#### Phase 2: Feature Extraction & Multi-Vector Representation
+1. **Named Entity Recognition (NER) & Skill Normalization**: 
+   - Resume and job description text streams are parsed against a comprehensive industry skill taxonomy (`skills_taxonomy.json`).
+   - Domain-specific aliases and acronyms (e.g., `k8s` -> `kubernetes`, `tf` -> `tensorflow`, `postgres` -> `postgresql`) are resolved into canonical terminology.
+2. **Dense Semantic Embedding Generation**:
+   - The `SentenceTransformer` model (`all-MiniLM-L6-v2`) encodes both the resume text and the job description into dense 384-dimensional continuous vector spaces.
+   - Cosine similarity between vectors measures contextual, contextualized semantic alignment ($s_1 \in [0, 1]$).
+3. **Relational Skill Taxonomy Graph Matching**:
+   - Compares candidate skills with required job skills.
+   - Direct matches receive full credit (weight: 1.0, generating $s_2$).
+   - Relational sibling/parent matches within the same technical group (e.g., React candidate applying for a Vue requirement) receive partial credit (weight: 0.6, generating $s_3$).
+
+#### Phase 3: Hybrid Scoring & Probabilistic Calibration
+1. **Feature Vector Assembly**: The system constructs a 3-element feature vector:
+   $$\mathbf{x} = [s_{\text{cosine}}, s_{\text{exact\_skill}}, s_{\text{skill\_graph}}]$$
+2. **Logistic Regression Calibration**:
+   - Instead of arbitrary heuristic weighting, the vector is passed through a calibrated Scikit-learn Logistic Regression model.
+   - Pre-trained mathematical parameters:
+     $$z = (+2.2368 \cdot s_{\text{cosine}}) + (+3.8712 \cdot s_{\text{exact}}) + (+3.2132 \cdot s_{\text{graph}}) - 4.8046$$
+     $$\text{Calibrated Score} = \frac{1}{1 + e^{-z}}$$
+   - This produces an empirical probability representing true candidate job fit.
+
+#### Phase 4: ATS Diagnostics & Explainable AI (XAI)
+1. **ATS Compatibility Evaluation**:
+   - Checks presence of dedicated skills and education sections (20 pts).
+   - Validates experience with fresher-friendly rules granting full credit for 2-3 verified internships or capstone project experiences (25 pts).
+   - Computes keyword density across job requirements (35 pts) and flags individual missing keywords with specific percentage impact penalties (e.g., `-12.5%`).
+   - Analyzes text length and word density against 250–1400 word optimal ATS thresholds (10 pts).
+   - Verifies contact detail completeness (10 pts).
+2. **SWOT & RAG Decision Rationale**:
+   - Generates an actionable SWOT matrix: Strengths (verified skills), Weaknesses (critical gaps), Opportunities (accelerated upskilling paths), and Threats (competitive depth variance).
+
+#### Phase 5: Demographic Bias & Ethical AI Auditing
+1. **Dual-Pass Anonymization**:
+   - Pass 1: Evaluates raw resume to record original match score.
+   - Pass 2: Redacts candidate name, email, phone number, gender-coded pronouns (`he`, `she`, `her`, `him`), and prestige educational institutions (e.g., Ivy League, IITs, Stanford, Oxford).
+2. **Fairness Delta Verification**:
+   - Re-runs the hybrid scoring engine on the anonymized resume text.
+   - Computes the variance delta: $\Delta = |\text{Score}_{\text{original}} - \text{Score}_{\text{anonymized}}|$.
+   - Verifies fairness status ($\Delta \le 5.0\%$) to guarantee the candidate is evaluated strictly on merit.
+
+#### Phase 6: Upskilling Engine & Interactive Visual Analytics
+1. **Targeted Learning Roadmap**:
+   - Identified missing skills are mapped to curated learning paths with estimated study hours (e.g., Docker: 14 hours) and projected match score improvements (e.g., `+12.5%`).
+2. **Interactive Plotly Visualization**:
+   - Generates multi-axis Skill Alignment Radar Charts and score factor breakdown charts delivered dynamically as Plotly JSON or embedded HTML.
+
+---
+
+## 5. Core Features & Functional Modules
 
 ### 1. Multi-Stage Document Parsing & Structural Segmentation
 - Extracts clean text from single/multi-column PDFs, Microsoft Word (.docx), and plain text (.txt).
@@ -168,7 +304,7 @@ Match scores are determined by combining three distinct signal vectors into a pr
 
 ---
 
-## 5. Database Schema & Data Models
+## 6. Database Schema & Data Models
 
 | Table Name | Primary Purpose | Key Fields |
 | :--- | :--- | :--- |
@@ -180,7 +316,7 @@ Match scores are determined by combining three distinct signal vectors into a pr
 
 ---
 
-## 6. API Route Overview
+## 7. API Route Overview
 
 ### 1. Authentication & User Profile (/api/auth, /me, /api/users)
 - `POST /api/auth/signup` - Register a new candidate or recruiter account
@@ -223,7 +359,7 @@ Match scores are determined by combining three distinct signal vectors into a pr
 
 ---
 
-## 7. Frontend Pages & Portals
+## 8. Frontend Pages & Portals
 
 1. **Authentication Portal (/auth)**: Clean card interface for logging in, registering with candidate or recruiter roles, and password recovery.
 2. **Candidate Portal (/candidate)**: Dedicated workflow for job seekers to upload resumes, inspect extracted skills, view target job matches, and initiate diagnostic evaluations.
@@ -239,7 +375,7 @@ Match scores are determined by combining three distinct signal vectors into a pr
 
 ---
 
-## 8. Local Setup & Installation
+## 9. Local Setup & Installation
 
 ### Prerequisites
 - Python 3.10 or higher
@@ -295,7 +431,7 @@ Match scores are determined by combining three distinct signal vectors into a pr
 
 ---
 
-## 9. Key Benefits & Summary
+## 10. Key Benefits & Summary
 
 - **For Candidates**: Pinpoint exact ATS keyword gaps, understand why a resume matches or misses job criteria, and follow tailored upskilling paths to maximize hiring potential.
 - **For Recruiters & Talent Teams**: Screen hundreds of applicants in seconds with calibrated ranking, eliminate unconscious hiring bias through automated PII redactions, and make data-backed hiring decisions with transparent scoring rationales.
