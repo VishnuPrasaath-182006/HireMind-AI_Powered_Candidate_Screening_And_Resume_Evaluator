@@ -314,11 +314,29 @@ def get_user_evaluation_history(
 
     history_items = []
     for r in records:
+        cand_name = None
+        if r.candidate_id:
+            cand = db.query(UserResume).filter(UserResume.id == r.candidate_id).first()
+            if not cand:
+                cand = db.query(RecruiterResume).filter(RecruiterResume.id == r.candidate_id).first()
+            if cand:
+                if cand.candidate_name and not any(b in cand.candidate_name.lower() for b in ['nlpdriven', 'guidance', 'senior software engineer']):
+                    cand_name = cand.candidate_name
+                elif cand.filename:
+                    import re
+                    base = re.sub(r'\b(resume|cv|curriculum|vitae|profile|document|biodata|sample|template|\(\d+\))\b', '', cand.filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' '), flags=re.IGNORECASE).strip()
+                    if base:
+                        cand_name = base.title()
+                if not cand_name:
+                    cand_name = cand.candidate_name
+        if not cand_name:
+            cand_name = current_user.name or "Candidate"
+
         history_items.append(
             EvaluationHistoryItem(
                 id=r.id,
                 candidate_id=r.candidate_id,
-                candidate_name=current_user.name,
+                candidate_name=cand_name,
                 company_name=r.company_name or "Company",
                 job_title=r.job_title or "Target Position",
                 job_description=r.job_description,
@@ -344,7 +362,10 @@ def get_history_detail(
 ):
     rec = (
         db.query(MatchEvaluationRecord)
-        .filter(MatchEvaluationRecord.id == history_id, MatchEvaluationRecord.user_id == current_user.id)
+        .filter(
+            (MatchEvaluationRecord.id == history_id) &
+            ((MatchEvaluationRecord.user_id == current_user.id) | (MatchEvaluationRecord.user_id.is_(None)))
+        )
         .first()
     )
     if not rec:
@@ -353,10 +374,30 @@ def get_history_detail(
             detail=f"Evaluation history record with ID {history_id} not found."
         )
 
+    cand_name = None
+    if rec.candidate_id:
+        cand = db.query(UserResume).filter(UserResume.id == rec.candidate_id).first()
+        if not cand:
+            cand = db.query(RecruiterResume).filter(RecruiterResume.id == rec.candidate_id).first()
+        if cand:
+            if cand.candidate_name and not any(b in cand.candidate_name.lower() for b in ['nlpdriven', 'guidance', 'senior software engineer']):
+                cand_name = cand.candidate_name
+            elif cand.filename:
+                import re
+                base = re.sub(r'\b(resume|cv|curriculum|vitae|profile|document|biodata|sample|template|\(\d+\))\b', '', cand.filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' '), flags=re.IGNORECASE).strip()
+                if base:
+                    cand_name = base.title()
+            if not cand_name:
+                cand_name = cand.candidate_name
+
+    candidate_name = cand_name or (current_user.name if current_user else "Candidate")
+
+    learning_engine = get_learning_path_engine()
+
     comparison_data = {
         "has_previous": True,
         "previous_match_percentage": None,
-        "current_match_percentage": round(rec.calibrated_score * 100, 2),
+        "current_match_percentage": round((rec.calibrated_score or 0.0) * 100, 2),
         "score_delta": rec.score_improvement_delta or 0.0,
         "improvement_status": "Saved Record",
         "previous_eval_date": rec.created_at.strftime("%b %d, %Y %H:%M") if rec.created_at else "",
@@ -371,21 +412,27 @@ def get_history_detail(
         "skill_graph_score": rec.skill_graph_score or 0.0,
         "match_percentage": round((rec.calibrated_score or 0.0) * 100, 2)
     }
-    swot_data = build_swot_analysis(current_user.name, rec.job_title or "Target Position", swot_match_result)
+    swot_data = build_swot_analysis(candidate_name, rec.job_title or "Target Position", swot_match_result)
+
+    learning_path_data = rec.learning_path
+    if not learning_path_data:
+        learning_path_data = learning_engine.generate_learning_path(rec.missing_skills or [])
+
+    recommended_roles = learning_engine.recommend_career_roles(rec.matched_skills or [], rec.job_description or "")
 
     return {
         "history_id": rec.id,
         "candidate_id": rec.candidate_id,
-        "candidate_name": current_user.name,
+        "candidate_name": candidate_name,
         "company_name": rec.company_name,
         "job_id": rec.job_id,
         "job_title": rec.job_title,
         "job_description": rec.job_description,
-        "calibrated_score": rec.calibrated_score,
-        "match_percentage": round(rec.calibrated_score * 100, 2),
-        "cosine_similarity": rec.cosine_similarity,
-        "exact_skill_score": rec.exact_skill_score,
-        "skill_graph_score": rec.skill_graph_score,
+        "calibrated_score": rec.calibrated_score or 0.0,
+        "match_percentage": round((rec.calibrated_score or 0.0) * 100, 2),
+        "cosine_similarity": rec.cosine_similarity or 0.0,
+        "exact_skill_score": rec.exact_skill_score or 0.0,
+        "skill_graph_score": rec.skill_graph_score or 0.0,
         "matched_exact_skills": rec.matched_skills or [],
         "matched_related_skills": [],
         "missing_skills": rec.missing_skills or [],
@@ -395,11 +442,11 @@ def get_history_detail(
             "missing_critical_skills": rec.missing_skills or [],
             "recommendation": "Review learning resources to boost match percentage."
         },
-        "learning_path": rec.learning_path or [],
+        "learning_path": learning_path_data or [],
         "swot": swot_data,
         "comparison": comparison_data,
         "ats_evaluation": rec.ats_evaluation or None,
-        "recommended_roles": learning_engine.recommend_career_roles(rec.matched_skills or [], rec.job_description or "")
+        "recommended_roles": recommended_roles or []
     }
 
 
@@ -411,7 +458,10 @@ def delete_history_item(
 ):
     rec = (
         db.query(MatchEvaluationRecord)
-        .filter(MatchEvaluationRecord.id == history_id, MatchEvaluationRecord.user_id == current_user.id)
+        .filter(
+            (MatchEvaluationRecord.id == history_id) &
+            ((MatchEvaluationRecord.user_id == current_user.id) | (MatchEvaluationRecord.user_id.is_(None)))
+        )
         .first()
     )
     if not rec:
@@ -429,7 +479,9 @@ def clear_all_history(
     current_user: Users = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    db.query(MatchEvaluationRecord).filter(MatchEvaluationRecord.user_id == current_user.id).delete()
+    db.query(MatchEvaluationRecord).filter(
+        (MatchEvaluationRecord.user_id == current_user.id) | (MatchEvaluationRecord.user_id.is_(None))
+    ).delete()
     db.commit()
     return {"message": "All evaluation history cleared successfully."}
 

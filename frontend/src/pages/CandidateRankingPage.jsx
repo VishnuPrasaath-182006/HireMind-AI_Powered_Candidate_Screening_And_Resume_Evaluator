@@ -774,11 +774,11 @@ export default function CandidateRankingPage() {
               </div>
             </div>
             {/* Quick Upskilling Recommendation */}
-            <div className="p-3.5 rounded-xl bg-slate-900 text-white text-xs space-y-1">
-              <div className="text-brand-300 font-bold uppercase tracking-wider text-[10px]">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 text-xs space-y-1 shadow-xs">
+              <div className="text-indigo-700 dark:text-brand-300 font-bold uppercase tracking-wider text-[10px]">
                 Target Upskilling Path
               </div>
-              <p className="text-slate-300 leading-tight">
+              <p className="text-slate-600 dark:text-slate-300 leading-tight">
                 Recommended focus on <strong>{activeSwot.recommended_focus_area}</strong> (~{activeSwot.estimated_upskill_hours}h lab) to achieve &gt; 85% role mastery.
               </p>
             </div>
@@ -788,35 +788,35 @@ export default function CandidateRankingPage() {
       {/* Fairness & Bias Audit Modal */}
       {auditModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-slate-900 font-extrabold text-base">
-                <ShieldAlert className="w-5 h-5 text-indigo-600" />
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 space-y-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-slate-900 dark:text-white font-extrabold text-base">
+                <ShieldAlert className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <span>Fairness & Bias Audit (4/5ths Rule Verification)</span>
               </div>
               <button
                 type="button"
                 onClick={() => setAuditModalOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             {auditLoading ? (
               <div className="py-12 text-center space-y-3">
-                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-indigo-600" />
-                <p className="text-xs text-slate-500 font-medium">Running demographic parity & adverse impact analysis...</p>
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-indigo-600 dark:text-indigo-400" />
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Running demographic parity & adverse impact analysis...</p>
               </div>
             ) : auditError ? (
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs">
                 {auditError}
               </div>
             ) : auditResult ? (
               <div className="space-y-4 text-xs">
                 <div className={`p-4 rounded-2xl border flex items-center justify-between ${
                   auditResult.disparate_impact_ratio >= 0.8
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                    : "bg-amber-50 border-amber-200 text-amber-900"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200"
+                    : "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200"
                 }`}>
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider">
@@ -827,24 +827,24 @@ export default function CandidateRankingPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-white shadow-xs">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs">
                       {auditResult.is_fair ? "Compliant (>= 0.80)" : "Adverse Impact Flagged"}
                     </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Demographic Parity Difference</div>
-                    <div className="text-base font-bold text-slate-900">{auditResult.demographic_parity_difference}</div>
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Demographic Parity Difference</div>
+                    <div className="text-base font-bold text-slate-900 dark:text-white">{auditResult.demographic_parity_difference}</div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Equal Opportunity Difference</div>
-                    <div className="text-base font-bold text-slate-900">{auditResult.equal_opportunity_difference}</div>
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Equal Opportunity Difference</div>
+                    <div className="text-base font-bold text-slate-900 dark:text-white">{auditResult.equal_opportunity_difference}</div>
                   </div>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-900 text-white space-y-1">
-                  <div className="font-bold text-brand-300 uppercase text-[10px]">Compliance Verdict</div>
-                  <p className="text-slate-300">{auditResult.verdict_summary}</p>
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white space-y-1 shadow-xs">
+                  <div className="font-bold text-indigo-700 dark:text-brand-300 uppercase text-[10px]">Compliance Verdict</div>
+                  <p className="text-slate-600 dark:text-slate-300">{auditResult.verdict_summary}</p>
                 </div>
               </div>
             ) : null}

@@ -1,5 +1,6 @@
-﻿from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 import re
+from app.services.skill_graph import are_skills_equivalent, SYNONYM_LOOKUP
 
 class ATSEngine:
     def evaluate_ats_compatibility(
@@ -72,8 +73,21 @@ class ATSEngine:
 
         total_kw = max(1, len(dedup_keywords))
         for kw in dedup_keywords:
-            pattern = r'\b' + re.escape(kw.lower()) + r'\b'
+            kw_lower = kw.lower()
+            pattern = r'\b' + re.escape(kw_lower) + r'\b'
             is_present = bool(re.search(pattern, resume_lower))
+            
+            # Check candidate parsed skills and synonym cluster if direct regex didn't hit
+            if not is_present:
+                if any(are_skills_equivalent(kw_lower, cs) for cs in candidate_skills):
+                    is_present = True
+                else:
+                    synonyms = SYNONYM_LOOKUP.get(kw_lower, set())
+                    for syn in synonyms:
+                        if re.search(r'\b' + re.escape(syn) + r'\b', resume_lower):
+                            is_present = True
+                            break
+
             if is_present:
                 matched_wordings.append(kw)
             else:

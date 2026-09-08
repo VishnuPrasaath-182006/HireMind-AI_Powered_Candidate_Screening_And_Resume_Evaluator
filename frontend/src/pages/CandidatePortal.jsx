@@ -188,7 +188,7 @@ export default function CandidatePortal() {
     }
   };
 
-  const handleLoadHistoryItem = async (historyId) => {
+  const handleLoadHistoryItem = async (historyId, autoNavigate = false) => {
     try {
       setActiveHistoryId(historyId);
       const resp = await api.get(`/api/match/history/${historyId}`);
@@ -210,6 +210,10 @@ export default function CandidatePortal() {
           isErased: false
         })
       );
+
+      if (autoNavigate) {
+        navigate("/evaluation");
+      }
     } catch (err) {
       console.error("Failed to load history item:", err);
     }
@@ -362,7 +366,7 @@ export default function CandidatePortal() {
                   return (
                     <div
                       key={item.id}
-                      onClick={() => handleLoadHistoryItem(item.id)}
+                      onClick={() => handleLoadHistoryItem(item.id, true)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer group relative ${isSelected
                         ? "bg-brand-50/80 border-brand-500 shadow-sm"
                         : "bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300"
@@ -371,7 +375,7 @@ export default function CandidatePortal() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-0.5 flex-1 min-w-0">
                           <div className="text-[10px] font-bold text-brand-700 uppercase tracking-wider truncate flex items-center gap-1">
-                            <Building2 className="w-3 h-3" /> {item.company_name || "Company"}
+                            <Building2 className="w-3 h-3 flex-shrink-0" /> {item.company_name || "Company"}
                           </div>
                           <div className="text-xs font-bold text-slate-900 truncate">
                             {item.job_title || "Position"}

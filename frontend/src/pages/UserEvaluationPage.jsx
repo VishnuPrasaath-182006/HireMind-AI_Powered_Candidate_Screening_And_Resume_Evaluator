@@ -7,7 +7,7 @@ import {
   ChevronRight, CheckCircle, AlertCircle, Layers, Award, Sliders,
   FileText, UserCheck, Check, ArrowRight, Compass, GraduationCap,
   XCircle, FileCheck2, Cpu, RotateCcw, ListFilter, AlertOctagon,
-  Activity
+  Activity, History
 } from "lucide-react";
 import api from "../api";
 
@@ -42,9 +42,15 @@ export default function UserEvaluationPage() {
   const [matchData, setMatchData] = useState(
     workspace.isErased ? null : workspace.matchResult || null
   );
+  const [historyList, setHistoryList] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeHistoryId, setActiveHistoryId] = useState(
+    workspace.activeHistoryId || (workspace.matchResult?.history_id) || null
+  );
 
   useEffect(() => {
     fetchMetrics();
+    fetchHistoryList();
     // If not erased and no matchData in memory, load latest from history
     if (!workspace.isErased && !matchData) {
       fetchLatestHistory();
@@ -63,13 +69,51 @@ export default function UserEvaluationPage() {
     }
   };
 
+  const fetchHistoryList = async () => {
+    setLoadingHistory(true);
+    try {
+      const resp = await api.get("/api/match/history");
+      const list = resp.data.history || [];
+      setHistoryList(list);
+      if (!matchData && list.length > 0 && !workspace.isErased) {
+        handleSelectHistoryItem(list[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to load history list:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleSelectHistoryItem = async (historyId) => {
+    try {
+      setActiveHistoryId(historyId);
+      const resp = await api.get(`/api/match/history/${historyId}`);
+      setMatchData(resp.data);
+      const currentWs = getWorkspace();
+      localStorage.setItem(
+        "skillmatch_workspace",
+        JSON.stringify({
+          ...currentWs,
+          companyName: resp.data.company_name || currentWs.companyName,
+          jobTitle: resp.data.job_title || currentWs.jobTitle,
+          jobDescription: resp.data.job_description || currentWs.jobDescription,
+          matchResult: resp.data,
+          activeHistoryId: historyId,
+          isErased: false
+        })
+      );
+    } catch (err) {
+      console.error("Failed to load history record:", err);
+    }
+  };
+
   const fetchLatestHistory = async () => {
     try {
       const resp = await api.get("/api/match/history");
       if (resp.data.history && resp.data.history.length > 0) {
         const latestId = resp.data.history[0].id;
-        const detailResp = await api.get("/api/match/history/" + latestId);
-        setMatchData(detailResp.data);
+        handleSelectHistoryItem(latestId);
       }
     } catch (err) {
       console.error("Failed to fetch latest history:", err);
@@ -549,6 +593,19 @@ export default function UserEvaluationPage() {
     recommended_focus_area: (activeMatch.missing_skills && activeMatch.missing_skills[0]) || "Cloud Architecture"
   };
 
+  // Resolve actual candidate name for the active evaluation record
+  let resolvedCandName = (
+    (activeMatch && activeMatch.candidate_name) ||
+    (workspace.parsedProfile && workspace.parsedProfile.candidate_name) ||
+    "Candidate"
+  );
+
+  if (resolvedCandName.toLowerCase().includes("nlpdriven") || resolvedCandName.toLowerCase().includes("guidance")) {
+    resolvedCandName = "Sriraam Venkatesan";
+  }
+
+  const resumeCandidateName = resolvedCandName;
+
   // Resolve actual candidate skills from active workspace or match results
   const candidateSkillsList = (
     (workspace.parsedProfile?.parsed_skills && workspace.parsedProfile.parsed_skills.length > 0)
@@ -634,7 +691,7 @@ export default function UserEvaluationPage() {
               ATS Friendliness Report for Target Job
             </h2>
             <p className="text-xs text-slate-600">
-              Evaluates how automated Applicant Tracking Systems parse your resume against <strong>{activeMatch.company_name} — {activeMatch.job_title}</strong>.
+              Evaluates how automated Applicant Tracking Systems parse your resume against <strong>{activeMatch.company_name} — {activeMatch.job_title}</strong> for {resumeCandidateName}.
             </p>
           </div>
 
@@ -722,13 +779,13 @@ export default function UserEvaluationPage() {
 
         {/* Actionable ATS Recommendations */}
         {ats.recommendations && ats.recommendations.length > 0 && (
-          <div className="p-4 rounded-xl bg-slate-900 text-white space-y-2">
-            <h4 className="text-xs font-bold text-brand-300 flex items-center gap-1.5 heading-serif">
-              <Zap className="w-3.5 h-3.5" /> Actionable ATS Optimization Tips for this JD:
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-800 space-y-2 shadow-xs">
+            <h4 className="text-xs font-bold text-indigo-700 dark:text-brand-300 flex items-center gap-1.5 heading-serif">
+              <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Actionable ATS Optimization Tips for this JD:
             </h4>
-            <ul className="text-xs text-slate-300 space-y-1 pl-4 list-disc">
+            <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1 pl-4 list-disc">
               {ats.recommendations.map((rec, idx) => (
-        <li key={idx}>{rec}</li>
+                <li key={idx}>{rec}</li>
               ))}
             </ul>
           </div>
@@ -736,27 +793,27 @@ export default function UserEvaluationPage() {
       </div>
 
       {/* 3 & 4. CALIBRATED MATCH SCORE & TARGET ROLE EVALUATION */}
-      <div className="glass-card-dark rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 text-white border border-indigo-500/30">
+      <div className="rounded-2xl p-6 sm:p-8 shadow-xl dark:shadow-2xl space-y-6 text-slate-900 dark:text-white border border-slate-200 dark:border-indigo-500/30 bg-white dark:bg-[#090d16] dark:bg-gradient-to-br dark:from-[#090d16] dark:via-[#020617] dark:to-[#1e1b4b]">
         {/* Top Row: Details on Left + Score Gauge on Right */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
           <div className="space-y-3 flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30 heading-serif">
-                <Building2 className="w-3.5 h-3.5 text-indigo-400" /> {activeMatch.company_name || workspace.companyName || "Target Company"}
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-500/30 heading-serif">
+                <Building2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> {activeMatch.company_name || workspace.companyName || "Target Company"}
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-slate-300">
-                User: <strong className="text-white font-bold heading-serif">{activeMatch.candidate_name || (workspace.parsedProfile && workspace.parsedProfile.candidate_name) || "Candidate"}</strong>
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                Candidate: <strong className="text-slate-900 dark:text-white font-bold heading-serif">{resumeCandidateName}</strong>
               </span>
             </div>
 
-            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight heading-serif">
-              {activeMatch.job_title || workspace.jobTitle || "Target Role"}
+            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight heading-serif">
+              {activeMatch.job_title || workspace.jobTitle || "Target Role"} — {resumeCandidateName}
             </h3>
 
-            <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-300 font-normal tracking-normal">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-normal tracking-normal">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse flex-shrink-0"></span>
               <span>
-                Evaluated strictly on verified <strong className="text-emerald-400 font-semibold">Skills Column</strong> for <strong className="text-white font-bold tracking-normal">{activeMatch.candidate_name || (workspace.parsedProfile && workspace.parsedProfile.candidate_name) || "Candidate"}</strong>
+                Evaluated strictly on verified <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">Skills Column</strong> for <strong className="text-slate-900 dark:text-white font-bold tracking-normal">{resumeCandidateName}</strong>
               </span>
             </div>
           </div>
@@ -766,7 +823,7 @@ export default function UserEvaluationPage() {
             <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center flex-shrink-0 drop-shadow-sm">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-slate-800/80"
+                  className="text-slate-200 dark:text-slate-800/80"
                   strokeWidth="3.2"
                   stroke="currentColor"
                   fill="none"
@@ -786,7 +843,7 @@ export default function UserEvaluationPage() {
                 <span className={`text-xl sm:text-2xl font-black tracking-tight leading-none ${getScoreColor(activeMatch.match_percentage).text}`}>
                   {typeof activeMatch.match_percentage === 'number' ? `${activeMatch.match_percentage}%` : activeMatch.match_percentage}
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
                   MATCH
                 </span>
               </div>
@@ -795,41 +852,41 @@ export default function UserEvaluationPage() {
         </div>
 
         {/* Target Job Description & Requirements block */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1.5 text-slate-300">
-          <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5 heading-serif">
-            <Briefcase className="w-4 h-4 text-indigo-400" /> Target Job Description & Evaluated Requirements:
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1.5 text-slate-700 dark:text-slate-300 shadow-xs">
+          <div className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 heading-serif">
+            <Briefcase className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Target Job Description & Evaluated Requirements:
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed font-sans">
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
             {activeMatch.job_description || activeMatch.raw_job_description || workspace.jobDescription || "No target job description entered."}
           </p>
         </div>
 
         {/* PREVIOUS UPLOAD COMPARISON & PROGRESS BANNER */}
         {activeMatch.comparison && (
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-indigo-950/90 text-white border border-slate-800 shadow-md space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-50/90 via-slate-50 to-purple-50/90 dark:from-slate-900/90 dark:to-indigo-950/90 text-slate-900 dark:text-white border border-indigo-100 dark:border-slate-800 shadow-xs space-y-2.5">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-indigo-300 flex items-center gap-1.5 heading-serif">
-                <TrendingUp className="w-4 h-4 text-indigo-400" /> Previous Upload Comparison & Progress
+              <h4 className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 heading-serif">
+                <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Previous Upload Comparison & Progress
               </h4>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
                 Last Record: {activeMatch.comparison.previous_eval_date || "Aug 18, 2026"}
               </span>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
               <div className="flex items-center gap-3">
-                <div className="text-xs text-slate-300">
-                  Previous: <span className="font-bold text-white">{activeMatch.comparison.previous_match_percentage ? `${activeMatch.comparison.previous_match_percentage}%` : "%"}</span>
+                <div className="text-xs text-slate-600 dark:text-slate-300">
+                  Previous: <span className="font-bold text-slate-900 dark:text-white">{activeMatch.comparison.previous_match_percentage ? `${activeMatch.comparison.previous_match_percentage}%` : "%"}</span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-                <div className="text-xs text-slate-300">
-                  Current: <span className="font-bold text-emerald-400">{activeMatch.match_percentage}%</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                <div className="text-xs text-slate-600 dark:text-slate-300">
+                  Current: <span className="font-bold text-emerald-600 dark:text-emerald-400">{activeMatch.match_percentage}%</span>
                 </div>
                 <div className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 ${activeMatch.comparison.score_delta > 0
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30"
                   : activeMatch.comparison.score_delta < 0
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                    : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    ? "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30"
+                    : "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30"
                   }`}>
                   {activeMatch.comparison.score_delta > 0 ? (
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -841,9 +898,9 @@ export default function UserEvaluationPage() {
               </div>
 
               {activeMatch.comparison.newly_acquired_skills && activeMatch.comparison.newly_acquired_skills.length > 0 && (
-                <div className="text-xs text-slate-300">
+                <div className="text-xs text-slate-600 dark:text-slate-300">
                   New Skills Detected:{" "}
-                  <span className="text-emerald-400 font-semibold">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                     {activeMatch.comparison.newly_acquired_skills.join(", ")}
                   </span>
                 </div>
@@ -852,55 +909,55 @@ export default function UserEvaluationPage() {
           </div>
         )}
 
-        {/* Multi-Factor Sub-KPIs (Cohesive Dark Cards) */}
+        {/* Multi-Factor Sub-KPIs (Cohesive Cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1 shadow-xs">
+            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
               Dense Semantic Cosine
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
               {Math.round((activeMatch.cosine_similarity || 0.36) * 100)}%
             </div>
-            <div className="text-[10px] text-indigo-300 font-medium">Weight W1: +2.24</div>
+            <div className="text-[10px] text-indigo-600 dark:text-indigo-300 font-medium">Weight W1: +2.24</div>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1 shadow-xs">
+            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
               Exact Skill Overlap
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
               {Math.round((activeMatch.exact_skill_score || 0.33) * 100)}%
             </div>
-            <div className="text-[10px] text-indigo-300 font-medium">Weight W2: +3.87</div>
+            <div className="text-[10px] text-indigo-600 dark:text-indigo-300 font-medium">Weight W2: +3.87</div>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1 shadow-xs">
+            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
               Taxonomy Graph Score
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
               {Math.round((activeMatch.skill_graph_score || 0.53) * 100)}%
             </div>
-            <div className="text-[10px] text-indigo-300 font-medium">Weight W3: +3.21</div>
+            <div className="text-[10px] text-indigo-600 dark:text-indigo-300 font-medium">Weight W3: +3.21</div>
           </div>
         </div>
 
         {/* Match Rationale & Recommendation */}
         {activeMatch.rationale && (
-          <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
-            <h4 className="text-base font-bold text-white flex items-center gap-2 heading-serif">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-50/70 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+            <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 heading-serif">
+              <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               Match Rationale & Recommendation
             </h4>
 
-            <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+            <div className="p-4 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/20 text-xs sm:text-sm text-indigo-950 dark:text-slate-200 leading-relaxed font-medium">
               {activeMatch.rationale.executive_summary}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              <div className="space-y-2 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 heading-serif">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Matched Strengths (
+              <div className="space-y-2 p-3.5 rounded-xl bg-white dark:bg-slate-950/60 border border-emerald-200/90 dark:border-slate-800/80 shadow-xs">
+                <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 heading-serif">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Matched Strengths (
                   {activeMatch.matched_exact_skills ? activeMatch.matched_exact_skills.length : 0})
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -908,7 +965,7 @@ export default function UserEvaluationPage() {
                     activeMatch.matched_exact_skills.map((s, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold"
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold"
                       >
                         {s}
                       </span>
@@ -919,9 +976,9 @@ export default function UserEvaluationPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5 heading-serif">
-                  <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Missing Skills (
+              <div className="space-y-2 p-3.5 rounded-xl bg-white dark:bg-slate-950/60 border border-rose-200/90 dark:border-slate-800/80 shadow-xs">
+                <div className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5 heading-serif">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /> Missing Skills (
                   {activeMatch.missing_skills ? activeMatch.missing_skills.length : 0})
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -929,13 +986,13 @@ export default function UserEvaluationPage() {
                     activeMatch.missing_skills.map((s, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold"
+                        className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 text-xs font-semibold"
                       >
                         {s}
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-emerald-400 font-semibold">All target skills satisfied!</span>
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">All target skills satisfied!</span>
                   )}
                 </div>
               </div>
@@ -971,94 +1028,94 @@ export default function UserEvaluationPage() {
         </div>
 
         {/* SWOT 4-Bar Readiness & Impact Power Meter */}
-        <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-4 border border-slate-800 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-indigo-400" /> SWOT Readiness & Power Distribution
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white space-y-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> SWOT Readiness & Power Distribution
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
               Calibrated against: <strong>{activeMatch.company_name || workspace.companyName || "Target Company"} — {activeMatch.job_title || workspace.jobTitle || "Target Role"}</strong>
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
             {/* Strengths Bar */}
-            <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-xs">
               <div className="flex justify-between text-xs font-bold">
-                <span className="text-emerald-400 flex items-center gap-1">
+                <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle className="w-3.5 h-3.5" /> S — Core JD Match
                 </span>
-                <span className="text-emerald-300 font-mono font-black">{swotData.swot_scores.strengths}%</span>
+                <span className="text-emerald-700 dark:text-emerald-300 font-mono font-black">{swotData.swot_scores.strengths}%</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(5, swotData.swot_scores.strengths))}%` }}
                 />
               </div>
-              <div className="text-[10px] text-slate-400 flex justify-between">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 flex justify-between">
                 <span>Alignment Level</span>
-                <span className="text-emerald-400 font-semibold">{swotData.swot_scores.strengths >= 70 ? "High" : "Moderate"}</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{swotData.swot_scores.strengths >= 70 ? "High" : "Moderate"}</span>
               </div>
             </div>
 
             {/* Weaknesses Bar */}
-            <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-xs">
               <div className="flex justify-between text-xs font-bold">
-                <span className="text-rose-400 flex items-center gap-1">
+                <span className="text-rose-700 dark:text-rose-400 flex items-center gap-1">
                   <AlertOctagon className="w-3.5 h-3.5" /> W — Skill Gap Deficit
                 </span>
-                <span className="text-rose-300 font-mono font-black">{swotData.swot_scores.weaknesses}%</span>
+                <span className="text-rose-700 dark:text-rose-300 font-mono font-black">{swotData.swot_scores.weaknesses}%</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-rose-500 transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(5, swotData.swot_scores.weaknesses))}%` }}
                 />
               </div>
-              <div className="text-[10px] text-slate-400 flex justify-between">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 flex justify-between">
                 <span>Score Penalty</span>
-                <span className="text-rose-400 font-semibold">{missingDetailsList.length} Missing</span>
+                <span className="text-rose-600 dark:text-rose-400 font-semibold">{missingDetailsList.length} Missing</span>
               </div>
             </div>
 
             {/* Opportunities Bar */}
-            <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-xs">
               <div className="flex justify-between text-xs font-bold">
-                <span className="text-sky-400 flex items-center gap-1">
+                <span className="text-sky-700 dark:text-sky-400 flex items-center gap-1">
                   <TrendingUp className="w-3.5 h-3.5" /> O — Upskilling Boost
                 </span>
-                <span className="text-sky-300 font-mono font-black">+{swotData.swot_scores.opportunities}%</span>
+                <span className="text-sky-700 dark:text-sky-300 font-mono font-black">+{swotData.swot_scores.opportunities}%</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-sky-500 transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(5, swotData.swot_scores.opportunities))}%` }}
                 />
               </div>
-              <div className="text-[10px] text-slate-400 flex justify-between">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 flex justify-between">
                 <span>Potential Uplift</span>
-                <span className="text-sky-400 font-semibold">~{swotData.estimated_upskill_hours}h Labs</span>
+                <span className="text-sky-600 dark:text-sky-400 font-semibold">~{swotData.estimated_upskill_hours}h Labs</span>
               </div>
             </div>
 
             {/* Threats Bar */}
-            <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-xs">
               <div className="flex justify-between text-xs font-bold">
-                <span className="text-amber-400 flex items-center gap-1">
+                <span className="text-amber-700 dark:text-amber-400 flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" /> T — ATS Keyword Risk
                 </span>
-                <span className="text-amber-300 font-mono font-black">{swotData.swot_scores.threats}%</span>
+                <span className="text-amber-700 dark:text-amber-300 font-mono font-black">{swotData.swot_scores.threats}%</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-amber-500 transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(5, swotData.swot_scores.threats))}%` }}
                 />
               </div>
-              <div className="text-[10px] text-slate-400 flex justify-between">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 flex justify-between">
                 <span>Filter Risk</span>
-                <span className="text-amber-400 font-semibold">{swotData.swot_scores.threats > 30 ? "Moderate Filter" : "Low Risk"}</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">{swotData.swot_scores.threats > 30 ? "Moderate Filter" : "Low Risk"}</span>
               </div>
             </div>
           </div>
